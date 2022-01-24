@@ -1,7 +1,9 @@
 package com.fcastro.customer;
 
-import com.netflix.appinfo.InstanceInfo;
-import com.netflix.discovery.EurekaClient;
+import com.fcastro.clients.fraud.FraudCheckResponse;
+import com.fcastro.clients.fraud.FraudClient;
+import com.fcastro.clients.notification.NotificationClient;
+import com.fcastro.clients.notification.NotificationRequest;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -11,7 +13,8 @@ import org.springframework.web.client.RestTemplate;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
-    private final RestTemplate restTemplate;
+    private final FraudClient fraudClient;
+    private final NotificationClient notificationClient;
 
     public void registerCustomer(CustomerRegistrationRequest request) {
         Customer customer = Customer.builder()
@@ -24,29 +27,20 @@ public class CustomerService {
         //TODO: Check if email not taken
         customerRepository.saveAndFlush(customer);
 
-        //Check if fraudster
+        //3 - Open Feign + Eureka Clients
+        FraudCheckResponse fraudCheckResponse = fraudClient.isFraudster(customer.getId());
 
-        //1 - Basic alternative to communicate to other services: inform HOST and PORT
-        /*      FraudCheckResponse fraudCheckResponse = restTemplate.getForObject(
-                "http://localhost:8081/api/V1/fraud-check/{customerId}",
-                FraudCheckResponse.class,
-                customer.getId());
-        */
-
-        //2 - Service Discover (EureKa Server) an important and fragile bottleneck: Finds out the HOST and PORT
-        //      a. Customer and Fraud instances register as clients,
-        //      b. Customer sends a service discovery requesto to Eurela Server
-        //      c. Customer asks for Fraud instance location
-        //      d. Customer send requests to Fraud
-        FraudCheckResponse fraudCheckResponse = restTemplate.getForObject(
-                "http://FRAUD/api/V1/fraud-check/{customerId}",
-                FraudCheckResponse.class,
-                customer.getId());
-
-        if (fraudCheckResponse != null){
-            if(fraudCheckResponse.isFraudster()){
+        if (fraudCheckResponse != null && fraudCheckResponse.isFraudster()){
                 throw new IllegalStateException("Fraudster: " + customer.getId());
-            }
         }
+
+        //Notify someone
+        notificationClient.sendNotification(
+        new NotificationRequest(
+                customer.getId(),
+                customer.getEmail(),
+                String.format("Hi %s, welcome",
+                        customer.getFirstName()))
+        );
     }
 }
