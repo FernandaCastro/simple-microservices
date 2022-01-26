@@ -12,7 +12,7 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
 
-    public void sendNotification(NotificationRequest notificationRequest){
+    public void send(NotificationRequest notificationRequest){
         notificationRepository.save(
                 Notification.builder()
                         .toCustomerId(notificationRequest.toCustomerId())
