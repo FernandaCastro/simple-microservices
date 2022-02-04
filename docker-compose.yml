@@ -9,10 +9,11 @@ services:
     volumes:
       - postgres-customer:/data/postgres
     ports:
-      - "5432:5432"
+      - "5435:5432"
     networks:
       - postgres
-    restart: unless-stopped
+      - spring
+    restart: always
   postgres-fraud:
     container_name: postgres-fraud
     image: postgres
@@ -26,7 +27,8 @@ services:
       - "5433:5432"
     networks:
       - postgres
-    restart: unless-stopped
+      - spring
+    restart: always
   postgres-notification:
     container_name: postgres-notification
     image: postgres
@@ -40,7 +42,8 @@ services:
       - "5434:5432"
     networks:
       - postgres
-    restart: unless-stopped
+      - spring
+    restart: always
   pgadmin:
     container_name: pgadmin
     image: dpage/pgadmin4
@@ -55,19 +58,92 @@ services:
     networks:
       - postgres
     restart: unless-stopped
-  zipkin:
-    image: openzipkin/zipkin
-    container_name: zipkin
-    ports:
-      - "9411:9411"
   rabbitmq:
     image: rabbitmq:3.9.11-management-alpine
     container_name: rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
+    networks:
+      - spring
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - spring
+  eureka-server:
+    image: fernandacastro/eureka-server:latest
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - spring
+    depends_on:
+      - zipkin
+  api-gateway:
+    image: fernandacastro/api-gateway:latest
+    container_name: api-gateway
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - spring
+    depends_on:
+      - zipkin
+      - eureka-server
+  customer:
+    image: fernandacastro/customer:latest
+    container_name: customer
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - postgres
+      - spring
+    depends_on:
+      - postgres-customer
+      - zipkin
+      - rabbitmq
+      - eureka-server
+  fraud:
+    image: fernandacastro/fraud:latest
+    container_name: fraud
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - postgres
+      - spring
+    depends_on:
+      - postgres-fraud
+      - zipkin
+      - eureka-server
+  notification:
+    image: fernandacastro/notification:latest
+    container_name: notification
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - postgres
+      - spring
+    depends_on:
+      - postgres-notification
+      - zipkin
+      - rabbitmq
+      - eureka-server
 networks:
   postgres:
+    driver: bridge
+  spring:
     driver: bridge
 
 volumes:
@@ -80,3 +156,4 @@ volumes:
 #docker compose up -d
 #networks is postgres so both containers(postgres and pgadmin) can talk to each other by the same network
 #RabbitMQ Management guest/guest
+#mvn clean package -P build-docker-image (Package and push the image to DockerHub)
