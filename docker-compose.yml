@@ -9,7 +9,7 @@ services:
     volumes:
       - postgres-customer:/data/postgres
     ports:
-      - "5435:5432"
+      - "5432:5432"
     networks:
       - postgres
       - spring
@@ -73,29 +73,29 @@ services:
       - "9411:9411"
     networks:
       - spring
-  eureka-server:
-    image: fernandacastro/eureka-server:latest
-    container_name: eureka-server
-    ports:
-      - "8761:8761"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-    networks:
-      - spring
-    depends_on:
-      - zipkin
-  api-gateway:
-    image: fernandacastro/api-gateway:latest
-    container_name: api-gateway
-    ports:
-      - "8083:8083"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-    networks:
-      - spring
-    depends_on:
-      - zipkin
-      - eureka-server
+#   eureka-server:
+#     image: fernandacastro/eureka-server:latest
+#     container_name: eureka-server
+#     ports:
+#       - "8761:8761"
+#     environment:
+#       - SPRING_PROFILES_ACTIVE=docker
+#     networks:
+#       - spring
+#     depends_on:
+#       - zipkin
+#   api-gateway:
+#     image: fernandacastro/api-gateway:latest
+#     container_name: api-gateway
+#     ports:
+#       - "8083:8083"
+#     environment:
+#       - SPRING_PROFILES_ACTIVE=docker
+#     networks:
+#       - spring
+#     depends_on:
+#       - zipkin
+#       - eureka-server
   customer:
     image: fernandacastro/customer:latest
     container_name: customer
@@ -110,7 +110,6 @@ services:
       - postgres-customer
       - zipkin
       - rabbitmq
-      - eureka-server
   fraud:
     image: fernandacastro/fraud:latest
     container_name: fraud
@@ -124,7 +123,6 @@ services:
     depends_on:
       - postgres-fraud
       - zipkin
-      - eureka-server
   notification:
     image: fernandacastro/notification:latest
     container_name: notification
@@ -139,7 +137,6 @@ services:
       - postgres-notification
       - zipkin
       - rabbitmq
-      - eureka-server
 networks:
   postgres:
     driver: bridge
